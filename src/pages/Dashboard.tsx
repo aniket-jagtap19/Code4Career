@@ -4,14 +4,45 @@ import {
   Zap, Trophy, Calendar, Clock, Users, TrendingUp, 
   ArrowRight, Code, Brain, Calculator, Target, LogOut
 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { auth, db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+
 
 const Dashboard = () => {
+  const user = auth.currentUser;
+const [division, setDivision] = useState("");
+const [year, setYear] = useState("");
+
+let firstName = "User";
+
+if (user?.displayName) {
+  firstName = user.displayName.split(" ")[0];
+}
+
   const skills = [
     { name: "CP", level: 72, color: "bg-primary" },
     { name: "DSA", level: 85, color: "bg-green-400" },
     { name: "Dev", level: 58, color: "bg-accent" },
     { name: "Aptitude", level: 91, color: "bg-purple-400" },
   ];
+useEffect(() => {
+  const fetchUserData = async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const userRef = doc(db, "users", user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (userSnap.exists()) {
+      const data = userSnap.data();
+      setDivision(data.division);
+      setYear(data.year);
+    }
+  };
+
+  fetchUserData();
+}, []);
 
   return (
     <div className="min-h-screen bg-background">
@@ -29,11 +60,11 @@ const Dashboard = () => {
               <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
                 <Zap className="w-5 h-5 text-primary" />
               </div>
-              <span className="text-xl font-bold text-foreground">SkillSprint</span>
+              <span className="text-xl font-bold text-foreground">Code4Career</span>
             </Link>
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
-                <span className="text-sm text-primary font-medium">Div 3</span>
+                <span className="text-sm text-primary font-medium">  {division || "div 2"} </span>
               </div>
               <Link to="/">
                 <Button variant="ghost" size="sm">
@@ -49,7 +80,7 @@ const Dashboard = () => {
         {/* Welcome */}
         <div className="mb-8 animate-slide-up">
           <h1 className="text-3xl font-bold text-foreground mb-2">
-            Welcome back, <span className="gradient-text">Rahul!</span>
+            Welcome back, <span className="gradient-text"> {firstName} ! </span>
           </h1>
           <p className="text-muted-foreground">Ready for the next challenge?</p>
         </div>
@@ -66,7 +97,7 @@ const Dashboard = () => {
                       UPCOMING
                     </span>
                     <span className="px-2 py-1 rounded-full bg-secondary text-muted-foreground text-xs">
-                      Div 3
+                       {division || "div 2"}
                     </span>
                   </div>
                   <h2 className="text-xl font-bold text-foreground mb-1">Weekly Placement Contest #12</h2>
@@ -212,8 +243,16 @@ const Dashboard = () => {
               <div className="absolute inset-0 bg-black/20" />
               <div className="relative z-10">
                 <p className="text-background/80 text-sm mb-1">Your Division</p>
-                <h4 className="font-bold text-background text-2xl mb-2">Division 3</h4>
-                <p className="text-background/70 text-sm">2nd Year Students</p>
+               <h4 className="font-bold text-background text-2xl mb-2">
+  {division || "div 2"}
+</h4>
+
+<p className="text-background/70 text-sm">
+  {year
+    ? `${year === "1" ? "1st" : year === "2" ? "2nd" : year === "3" ? "3rd" : "Final"} Year Students`
+    : ""}
+</p>
+
                 <div className="mt-4 flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-background animate-pulse" />
                   <span className="text-xs text-background/80">156 active members</span>

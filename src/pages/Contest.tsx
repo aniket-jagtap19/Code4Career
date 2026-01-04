@@ -692,7 +692,7 @@ const Contest = () => {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <h1 className="font-bold text-foreground hidden sm:block">
-                Weekly Div 3 Contest
+                Weekly Contest
               </h1>
               <div className="flex items-center gap-1">
                 {sections.map((section, idx) => (
