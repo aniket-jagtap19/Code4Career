@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import CodeEditor from "@/components/CodeEditor";
@@ -21,7 +21,7 @@ type Difficulty = "Easy" | "Medium" | "Hard";
 type QuestionType = "code" | "text" | "mcq";
 
 interface MCQOption {
-  id: string; // "a" | "b" | "c" | "d"
+  id: string;
   text: string;
 }
 
@@ -34,7 +34,7 @@ interface TestCase {
 
 interface Question {
   id: string;
-  section: number; // 0: CP, 1: DSA, 2: Dev, 3: Aptitude
+  section: number;
   title: string;
   difficulty: Difficulty;
   tags: string[];
@@ -42,7 +42,7 @@ interface Question {
   type: QuestionType;
   options?: MCQOption[];
   correctOptionId?: string;
-  testCases?: TestCase[]; // for CP/DSA
+  testCases?: TestCase[];
 }
 
 interface PistonResult {
@@ -66,15 +66,22 @@ interface ExecutionSummary {
   total: number;
 }
 
-const PISTON_URL = "https://emkc.org/api/v2/piston/execute"; // public, free[web:24][web:63]
+interface AttemptResult {
+  questionId: string;
+  section: number;
+  solved: boolean;
+  attempts: number;
+  timeSpent: number;
+}
 
-const languageRuntime: Record<Language, { language: string; version: string }> =
-  {
-    cpp: { language: "c++", version: "*" },
-    python: { language: "python", version: "*" },
-    java: { language: "java", version: "*" },
-    javascript: { language: "javascript", version: "*" },
-  };
+const PISTON_URL = "https://emkc.org/api/v2/piston/execute";
+
+const languageRuntime: Record<Language, { language: string; version: string }> = {
+  cpp: { language: "c++", version: "*" },
+  python: { language: "python", version: "*" },
+  java: { language: "java", version: "*" },
+  javascript: { language: "javascript", version: "*" },
+};
 
 const sections = [
   { name: "CP", icon: Code, color: "text-primary", questions: 3 },
@@ -84,7 +91,6 @@ const sections = [
 ];
 
 const questions: Question[] = [
-  // ---------- CP (code, with testcases) ----------
   {
     id: "cp-1",
     section: 0,
@@ -106,20 +112,11 @@ The subarray [4, -1, 2, 1] has the largest sum = 6.
 
 Constraints:
 1 ≤ n ≤ 10^5
--10^4 ≤ nums[i] ≤ 10^4
-`,
+-10^4 ≤ nums[i] ≤ 10^4`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "8\n-2 1 -3 4 -1 2 1 -5 4\n",
-        output: "6\n",
-      },
-      {
-        id: "2",
-        input: "1\n5\n",
-        output: "5\n",
-      },
+      { id: "1", input: "8\n-2 1 -3 4 -1 2 1 -5 4\n", output: "6\n" },
+      { id: "2", input: "1\n5\n", output: "5\n" },
     ],
   },
   {
@@ -140,20 +137,11 @@ Input:
 9
 
 Output:
-0 1
-`,
+0 1`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "4\n2 7 11 15\n9\n",
-        output: "0 1\n",
-      },
-      {
-        id: "2",
-        input: "3\n3 2 4\n6\n",
-        output: "1 2\n",
-      },
+      { id: "1", input: "4\n2 7 11 15\n9\n", output: "0 1\n" },
+      { id: "2", input: "3\n3 2 4\n6\n", output: "1 2\n" },
     ],
   },
   {
@@ -181,8 +169,6 @@ Do NOT print extra spaces or lines.`,
       { id: "2", input: "cbbd\n", output: "bb\n" },
     ],
   },
-
-  // ---------- DSA (code, elaborated) ----------
   {
     id: "dsa-1",
     section: 1,
@@ -204,20 +190,11 @@ Input:
 1 2 3 4 5
 
 Output:
-5 4 3 2 1
-`,
+5 4 3 2 1`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "5\n1 2 3 4 5\n",
-        output: "5 4 3 2 1\n",
-      },
-      {
-        id: "2",
-        input: "3\n10 20 30\n",
-        output: "30 20 10\n",
-      },
+      { id: "1", input: "5\n1 2 3 4 5\n", output: "5 4 3 2 1\n" },
+      { id: "2", input: "3\n10 20 30\n", output: "30 20 10\n" },
     ],
   },
   {
@@ -242,15 +219,10 @@ Input:
 3 9 20 -1 -1 15 7
 
 Output:
-3 9 20 15 7
-`,
+3 9 20 15 7`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "7\n3 9 20 -1 -1 15 7\n",
-        output: "3 9 20 15 7\n",
-      },
+      { id: "1", input: "7\n3 9 20 -1 -1 15 7\n", output: "3 9 20 15 7\n" },
     ],
   },
   {
@@ -278,15 +250,10 @@ Input:
 1 2
 
 Output:
-1 1 2 3 4 5
-`,
+1 1 2 3 4 5`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "3\n3 1 4 5\n2 1 3\n1 2\n",
-        output: "1 1 2 3 4 5\n",
-      },
+      { id: "1", input: "3\n3 1 4 5\n2 1 3\n1 2\n", output: "1 1 2 3 4 5\n" },
     ],
   },
   {
@@ -314,27 +281,19 @@ Input:
 2 8
 
 Output:
-6
-`,
+6`,
     type: "code",
     testCases: [
-      {
-        id: "1",
-        input: "7\n6 2 8 0 4 7 9\n2 8\n",
-        output: "6\n",
-      },
+      { id: "1", input: "7\n6 2 8 0 4 7 9\n2 8\n", output: "6\n" },
     ],
   },
-
-  // ---------- DEV (MCQ) ----------
   {
     id: "dev-1",
     section: 2,
     title: "What is REST?",
     difficulty: "Easy",
     tags: ["API", "Basics"],
-    statement:
-      "Which of the following best describes REST (Representational State Transfer)?",
+    statement: "Which of the following best describes REST (Representational State Transfer)?",
     type: "mcq",
     options: [
       { id: "a", text: "A protocol for real-time messaging between browsers" },
@@ -366,8 +325,7 @@ Output:
     title: "Status Code 201",
     difficulty: "Easy",
     tags: ["HTTP", "Status Codes"],
-    statement:
-      "What does HTTP status code 201 (Created) MOST commonly indicate in a REST API?",
+    statement: "What does HTTP status code 201 (Created) MOST commonly indicate in a REST API?",
     type: "mcq",
     options: [
       { id: "a", text: "The request body is invalid" },
@@ -383,8 +341,7 @@ Output:
     title: "Database Normalization",
     difficulty: "Medium",
     tags: ["Database", "Design"],
-    statement:
-      "What is the MAIN goal of database normalization in backend systems?",
+    statement: "What is the MAIN goal of database normalization in backend systems?",
     type: "mcq",
     options: [
       { id: "a", text: "To make queries slower" },
@@ -400,8 +357,7 @@ Output:
     title: "JWT Usage",
     difficulty: "Medium",
     tags: ["Auth", "Security"],
-    statement:
-      "Where is a JSON Web Token (JWT) MOST commonly used in a typical web application?",
+    statement: "Where is a JSON Web Token (JWT) MOST commonly used in a typical web application?",
     type: "mcq",
     options: [
       { id: "a", text: "As a database primary key" },
@@ -411,16 +367,13 @@ Output:
     ],
     correctOptionId: "c",
   },
-
-  // ---------- APTITUDE (MCQ) ----------
   {
     id: "apt-1",
     section: 3,
     title: "Probability - Balls",
     difficulty: "Easy",
     tags: ["Probability"],
-    statement:
-      "A bag has 5 red and 3 blue balls. One ball is drawn at random. What is the probability that it is red?",
+    statement: "A bag has 5 red and 3 blue balls. One ball is drawn at random. What is the probability that it is red?",
     type: "mcq",
     options: [
       { id: "a", text: "3/8" },
@@ -436,8 +389,7 @@ Output:
     title: "Percent Change",
     difficulty: "Easy",
     tags: ["Percentages"],
-    statement:
-      "A number is increased by 20% and then decreased by 20%. What is the net change?",
+    statement: "A number is increased by 20% and then decreased by 20%. What is the net change?",
     type: "mcq",
     options: [
       { id: "a", text: "No change" },
@@ -469,8 +421,7 @@ Output:
     title: "Time & Work",
     difficulty: "Medium",
     tags: ["Time & Work"],
-    statement:
-      "A can do a work in 12 days and B in 18 days. Working together, in how many days will they finish the work?",
+    statement: "A can do a work in 12 days and B in 18 days. Working together, in how many days will they finish the work?",
     type: "mcq",
     options: [
       { id: "a", text: "6 days" },
@@ -486,8 +437,7 @@ Output:
     title: "Simple Interest",
     difficulty: "Easy",
     tags: ["Interest"],
-    statement:
-      "On a principal of ₹10,000 at 10% simple interest per annum, what is the interest in 2 years?",
+    statement: "On a principal of ₹10,000 at 10% simple interest per annum, what is the interest in 2 years?",
     type: "mcq",
     options: [
       { id: "a", text: "₹1,000" },
@@ -503,8 +453,7 @@ Output:
     title: "Ratio",
     difficulty: "Easy",
     tags: ["Ratio"],
-    statement:
-      "The ratio of boys to girls in a class is 3:2. If there are 30 students, how many girls are there?",
+    statement: "The ratio of boys to girls in a class is 3:2. If there are 30 students, how many girls are there?",
     type: "mcq",
     options: [
       { id: "a", text: "10" },
@@ -558,32 +507,6 @@ async function runWithPiston(
   return (await res.json()) as PistonResult;
 }
 
-function summarizeExecution(
-  piston: PistonResult,
-  testCases: TestCase[]
-): ExecutionSummary {
-  const stdout = (piston.run?.stdout || "").trim();
-  const stderr = (piston.run?.stderr || piston.compile?.stderr || "").trim();
-
-  let passed = 0;
-  for (const tc of testCases) {
-    if (!tc.output) continue;
-    if (stdout.includes(tc.output.trim())) passed++;
-  }
-
-  let status = "Accepted";
-  if (stderr) status = "Runtime / Compile Error";
-  else if (passed < testCases.length) status = "Wrong Answer";
-
-  return {
-    status,
-    stdout,
-    stderr,
-    passed,
-    total: testCases.length,
-  };
-}
-
 const Contest = () => {
   const navigate = useNavigate();
 
@@ -596,11 +519,21 @@ const Contest = () => {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [timeRemaining, setTimeRemaining] = useState(120 * 60);
 
+  const [results, setResults] = useState<Record<string, AttemptResult>>({});
+
+  const questionStartTime = useRef<number>(Date.now());
+
+  // FIX: Calculate sectionQuestions and currentQ BEFORE using in useEffect
   const sectionQuestions = useMemo(
     () => questions.filter((q) => q.section === currentSection),
     [currentSection]
   );
   const currentQ = sectionQuestions[currentQuestion];
+
+  // FIX: Now dependencies are correctly defined
+  useEffect(() => {
+    questionStartTime.current = Date.now();
+  }, [currentQ?.id]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -613,42 +546,88 @@ const Contest = () => {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
     const s = sec % 60;
-    return `${String(h).padStart(2, "0")}:${String(m).padStart(
-      2,
-      "0"
-    )}:${String(s).padStart(2, "0")}`;
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
   const handleSubmit = () => {
-    navigate("/submission", { state: { answers } });
-  };
+  // Calculate actual time spent (initial 120 min - remaining)
+  const totalTimeSpent = (120 * 60) - timeRemaining;
+  
+  navigate("/submission", { 
+    state: { 
+      answers,        // answers object: questionId -> answer
+      questions,      // questions array (for stats calculation)
+      totalTimeSpent, // in seconds
+    } 
+  });
+};
+
 
   const handleRunCode = useCallback(async () => {
     if (!currentQ || currentQ.type !== "code") return;
     if (!answers[currentQ.id]?.trim()) return;
-    const tcs = currentQ.testCases || [];
 
+    const tcs = currentQ.testCases || [];
     setRunning(true);
     setRunResult(null);
 
     try {
-      const firstInput = tcs[0]?.input || "";
-      const pistonResult = await runWithPiston(
-        language,
-        answers[currentQ.id],
-        firstInput
-      );
-      const summary = summarizeExecution(pistonResult, tcs);
-      setRunResult(summary);
+      let passed = 0;
+      let lastStdout = "";
+      let lastStderr = "";
+
+      for (const tc of tcs) {
+        const pistonResult = await runWithPiston(language, answers[currentQ.id], tc.input);
+
+        const stdout = (pistonResult.run?.stdout || "").trim();
+        const stderr = (pistonResult.run?.stderr || pistonResult.compile?.stderr || "").trim();
+
+        lastStdout = stdout;
+        lastStderr = stderr;
+
+        if (stderr) break;
+
+        if (stdout === tc.output.trim()) {
+          passed++;
+        }
+      }
+
+      let status = "Accepted";
+      if (lastStderr) status = "Runtime / Compile Error";
+      else if (passed < tcs.length) status = "Wrong Answer";
+
+      const timeSpentThisAttempt = Math.floor((Date.now() - questionStartTime.current) / 1000);
+
+      setResults((prev) => {
+        const prevAttempt = prev[currentQ.id];
+        return {
+          ...prev,
+          [currentQ.id]: {
+            questionId: currentQ.id,
+            section: currentQ.section,
+            solved: status === "Accepted",
+            attempts: (prevAttempt?.attempts || 0) + 1,
+            timeSpent: (prevAttempt?.timeSpent || 0) + timeSpentThisAttempt,
+          },
+        };
+      });
+      questionStartTime.current = Date.now();
+
+      setRunResult({
+        status,
+        stdout: lastStdout,
+        stderr: lastStderr,
+        passed,
+        total: tcs.length,
+      });
     } catch (err) {
       console.error(err);
-      // fallback simple mock if Piston fails
       setRunResult({
-        status: "Mock Result (Piston failed)",
-        stdout: "Executed locally (mock). Cannot verify test cases.",
-        stderr: "",
+        status: "Judge Error",
+        stdout: "",
+        stderr: "Execution failed",
         passed: 0,
-        total: (currentQ.testCases || []).length,
+        total: tcs.length,
       });
     } finally {
       setRunning(false);
@@ -681,9 +660,11 @@ const Contest = () => {
   };
 
   const isFirst = currentSection === 0 && currentQuestion === 0;
-  const isLast =
-    currentSection === sections.length - 1 &&
-    currentQuestion === sectionQuestions.length - 1;
+  const isLast = currentSection === sections.length - 1 && currentQuestion === sectionQuestions.length - 1;
+
+  if (!currentQ) {
+    return <div className="min-h-screen bg-background flex items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -691,9 +672,7 @@ const Contest = () => {
         <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="font-bold text-foreground hidden sm:block">
-                Weekly Contest
-              </h1>
+              <h1 className="font-bold text-foreground hidden sm:block">Weekly Contest</h1>
               <div className="flex items-center gap-1">
                 {sections.map((section, idx) => (
                   <button
@@ -718,9 +697,7 @@ const Contest = () => {
             <div className="flex items-center gap-4">
               <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-secondary">
                 <Clock className="w-4 h-4 text-primary" />
-                <span className="font-mono font-bold text-foreground">
-                  {formatTime(timeRemaining)}
-                </span>
+                <span className="font-mono font-bold text-foreground">{formatTime(timeRemaining)}</span>
               </div>
               <Button variant="glow" size="sm" onClick={handleSubmit}>
                 <Send className="w-4 h-4" />
@@ -732,20 +709,12 @@ const Contest = () => {
       </header>
 
       <div className="flex-1 flex">
-        {/* Sidebar */}
         <aside className="w-64 border-r border-border bg-card/50 hidden lg:block">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-foreground">
-                {sections[currentSection].name} Questions
-              </h3>
+              <h3 className="font-semibold text-foreground">{sections[currentSection].name} Questions</h3>
               <span className="text-sm text-muted-foreground">
-                {
-                  sectionQuestions.filter(
-                    (q) => answers[q.id] && answers[q.id].trim()
-                  ).length
-                }
-                /{sectionQuestions.length}
+                {sectionQuestions.filter((q) => answers[q.id]?.trim()).length}/{sectionQuestions.length}
               </span>
             </div>
             <div className="space-y-2">
@@ -760,33 +729,25 @@ const Contest = () => {
                   }`}
                 >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-foreground">
-                      Q{idx + 1}
-                    </span>
-                    {answers[q.id] && answers[q.id].trim() ? (
+                    <span className="text-sm font-medium text-foreground">Q{idx + 1}</span>
+                    {answers[q.id]?.trim() ? (
                       <CheckCircle className="w-4 h-4 text-green-400" />
                     ) : (
                       <Circle className="w-4 h-4 text-muted-foreground" />
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {q.title}
-                  </p>
+                  <p className="text-xs text-muted-foreground truncate">{q.title}</p>
                 </button>
               ))}
             </div>
           </div>
 
           <div className="p-4 border-t border-border">
-            <h4 className="text-sm font-medium text-muted-foreground mb-3">
-              Section Progress
-            </h4>
+            <h4 className="text-sm font-medium text-muted-foreground mb-3">Section Progress</h4>
             <div className="space-y-2">
               {sections.map((section, idx) => {
                 const sectionQs = questions.filter((q) => q.section === idx);
-                const answered = sectionQs.filter(
-                  (q) => answers[q.id] && answers[q.id].trim()
-                ).length;
+                const answered = sectionQs.filter((q) => answers[q.id]?.trim()).length;
                 return (
                   <div key={section.name} className="flex items-center gap-2">
                     <section.icon className={`w-4 h-4 ${section.color}`} />
@@ -794,11 +755,7 @@ const Contest = () => {
                       <div
                         className="h-full bg-primary rounded-full transition-all"
                         style={{
-                          width: `${
-                            sectionQs.length
-                              ? (answered / sectionQs.length) * 100
-                              : 0
-                          }%`,
+                          width: `${sectionQs.length ? (answered / sectionQs.length) * 100 : 0}%`,
                         }}
                       />
                     </div>
@@ -812,219 +769,62 @@ const Contest = () => {
           </div>
         </aside>
 
-        {/* Main */}
         <main className="flex-1 flex flex-col">
           <div className="flex-1 p-6 overflow-auto">
-            {currentQ && (
-              <div className="max-w-3xl mx-auto animate-slide-up">
-                <div className="flex items-start justify-between mb-6">
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <span
-                        className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(
-                          currentQ.difficulty
-                        )}`}
-                      >
-                        {currentQ.difficulty}
+            <div className="max-w-3xl mx-auto animate-slide-up">
+              <div className="flex items-start justify-between mb-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${getDifficultyColor(currentQ.difficulty)}`}>
+                      {currentQ.difficulty}
+                    </span>
+                    {currentQ.tags.map((tag) => (
+                      <span key={tag} className="px-2 py-0.5 rounded bg-secondary text-xs text-muted-foreground">
+                        {tag}
                       </span>
-                      {currentQ.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-2 py-0.5 rounded bg-secondary text-xs text-muted-foreground"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <h2 className="text-2xl font-bold text-foreground">
-                      {currentQ.title}
-                    </h2>
+                    ))}
                   </div>
-                  <span className="text-sm text-muted-foreground">
-                    Q{currentQuestion + 1} of {sectionQuestions.length}
-                  </span>
+                  <h2 className="text-2xl font-bold text-foreground">{currentQ.title}</h2>
                 </div>
+                <span className="text-sm text-muted-foreground">
+                  Q{currentQuestion + 1} of {sectionQuestions.length}
+                </span>
+              </div>
 
-                <div className="glass rounded-xl p-6 mb-6">
-                  <pre className="whitespace-pre-wrap font-mono text-sm text-foreground leading-relaxed">
-                    {currentQ.statement}
-                  </pre>
-                </div>
+              <div className="glass rounded-xl p-6 mb-6">
+                <pre className="whitespace-pre-wrap font-mono text-sm text-foreground leading-relaxed">
+                  {currentQ.statement}
+                </pre>
+              </div>
 
-                <div className="glass rounded-xl p-6">
-                  <h3 className="font-semibold text-foreground mb-4">
-                    Your Answer
-                  </h3>
+              <div className="glass rounded-xl p-6">
+                <h3 className="font-semibold text-foreground mb-4">Your Answer</h3>
 
-                  {currentQ.type === "code" && (
-                    <>
-                      <div className="mb-3">
-                        <label className="block text-sm text-muted-foreground mb-1">
-                          Select Language
-                        </label>
-                        <select
-                          value={language}
-                          onChange={(e) =>
-                            setLanguage(e.target.value as Language)
-                          }
-                          className="p-2 rounded bg-secondary border border-border text-foreground"
-                        >
-                          <option value="cpp">C++</option>
-                          <option value="java">Java</option>
-                          <option value="python">Python</option>
-                          <option value="javascript">JavaScript</option>
-                        </select>
-                      </div>
+                {currentQ.type === "code" && (
+                  <>
+                    <div className="mb-3">
+                      <label className="block text-sm text-muted-foreground mb-1">Select Language</label>
+                      <select
+                        value={language}
+                        onChange={(e) => setLanguage(e.target.value as Language)}
+                        className="p-2 rounded bg-secondary border border-border text-foreground"
+                      >
+                        <option value="cpp">C++</option>
+                        <option value="java">Java</option>
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                      </select>
+                    </div>
 
-                      <CodeEditor
-                        language={language}
-                        value={answers[currentQ.id] || ""}
-                        onChange={(val: string) =>
-                          setAnswers((prev) => ({ ...prev, [currentQ.id]: val }))
-                        }
-                      />
+                    <CodeEditor
+                      language={language}
+                      value={answers[currentQ.id] || ""}
+                      onChange={(val: string) => setAnswers((prev) => ({ ...prev, [currentQ.id]: val }))}
+                    />
 
-                      <div className="flex items-center justify-between mt-4">
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                          {answers[currentQ.id] &&
-                          answers[currentQ.id].trim() ? (
-                            <>
-                              <CheckCircle className="w-4 h-4 text-green-400" />
-                              Answer saved
-                            </>
-                          ) : (
-                            <>
-                              <AlertTriangle className="w-4 h-4 text-accent" />
-                              Not answered yet
-                            </>
-                          )}
-                        </div>
-
-                        <div className="flex gap-2">
-                          <Button
-                            variant="secondary"
-                            size="sm"
-                            onClick={handleRunCode}
-                            disabled={
-                              running ||
-                              !answers[currentQ.id] ||
-                              !answers[currentQ.id].trim()
-                            }
-                          >
-                            {running ? "Running..." : "Run Code (Piston)"}
-                          </Button>
-
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() =>
-                              setAnswers((prev) => ({
-                                ...prev,
-                                [currentQ.id]:
-                                  answers[currentQ.id] || "",
-                              }))
-                            }
-                          >
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-
-                      {runResult && (
-                        <div className="mt-6 glass rounded-xl p-4">
-                          <p className="text-sm font-semibold mb-2">
-                            Status: {runResult.status}
-                          </p>
-                          <p className="text-xs text-muted-foreground mb-1">
-                            Tests passed: {runResult.passed}/{runResult.total}
-                          </p>
-                          {runResult.stdout && (
-                            <>
-                              <p className="text-xs font-semibold mb-1">
-                                Output
-                              </p>
-                              <pre className="text-sm whitespace-pre-wrap font-mono bg-background/60 p-3 rounded">
-                                {runResult.stdout}
-                              </pre>
-                            </>
-                          )}
-                          {runResult.stderr && (
-                            <>
-                              <p className="text-xs font-semibold mt-3 mb-1 text-destructive">
-                                Error
-                              </p>
-                              <pre className="text-sm whitespace-pre-wrap font-mono bg-destructive/10 p-3 rounded text-destructive">
-                                {runResult.stderr}
-                              </pre>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {currentQ.type === "mcq" && currentQ.options && (
-                    <>
-                      <div className="space-y-2">
-                        {currentQ.options.map((opt) => {
-                          const selected = answers[currentQ.id] === opt.id;
-                          return (
-                            <button
-                              key={opt.id}
-                              type="button"
-                              onClick={() =>
-                                setAnswers((prev) => ({
-                                  ...prev,
-                                  [currentQ.id]: opt.id,
-                                }))
-                              }
-                              className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition ${
-                                selected
-                                  ? "border-primary bg-primary/10 text-foreground"
-                                  : "border-border bg-secondary hover:bg-secondary/80 text-foreground"
-                              }`}
-                            >
-                              <span className="font-mono mr-2 uppercase">
-                                {opt.id}.
-                              </span>
-                              {opt.text}
-                            </button>
-                          );
-                        })}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
-                        {answers[currentQ.id] ? (
-                          <>
-                            <CheckCircle className="w-4 h-4 text-green-400" />
-                            Option selected
-                          </>
-                        ) : (
-                          <>
-                            <AlertTriangle className="w-4 h-4 text-accent" />
-                            Not answered yet
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {currentQ.type === "text" && (
-                    <>
-                      <textarea
-                        className="w-full h-48 p-4 rounded-lg bg-secondary border border-border text-foreground font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
-                        placeholder="Type your answer here..."
-                        value={answers[currentQ.id] || ""}
-                        onChange={(e) =>
-                          setAnswers((prev) => ({
-                            ...prev,
-                            [currentQ.id]: e.target.value,
-                          }))
-                        }
-                      />
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
-                        {answers[currentQ.id] &&
-                        answers[currentQ.id].trim() ? (
+                    <div className="flex items-center justify-between mt-4">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        {answers[currentQ.id]?.trim() ? (
                           <>
                             <CheckCircle className="w-4 h-4 text-green-400" />
                             Answer saved
@@ -1036,11 +836,145 @@ const Contest = () => {
                           </>
                         )}
                       </div>
-                    </>
-                  )}
-                </div>
+
+                      <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={handleRunCode}
+                          disabled={running || !answers[currentQ.id]?.trim()}
+                        >
+                          {running ? "Running..." : "Run Code (Piston)"}
+                        </Button>
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setAnswers((prev) => ({ ...prev, [currentQ.id]: answers[currentQ.id] || "" }))}
+                        >
+                          Save
+                        </Button>
+                      </div>
+                    </div>
+
+                    {runResult && (
+                      <div className="mt-6 glass rounded-xl p-4">
+                        <p className="text-sm font-semibold mb-2">Status: {runResult.status}</p>
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Tests passed: {runResult.passed}/{runResult.total}
+                        </p>
+                        {runResult.stdout && (
+                          <>
+                            <p className="text-xs font-semibold mb-1">Output</p>
+                            <pre className="text-sm whitespace-pre-wrap font-mono bg-background/60 p-3 rounded">
+                              {runResult.stdout}
+                            </pre>
+                          </>
+                        )}
+                        {runResult.stderr && (
+                          <>
+                            <p className="text-xs font-semibold mt-3 mb-1 text-destructive">Error</p>
+                            <pre className="text-sm whitespace-pre-wrap font-mono bg-destructive/10 p-3 rounded text-destructive">
+                              {runResult.stderr}
+                            </pre>
+                          </>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {currentQ.type === "mcq" && currentQ.options && (
+                  <>
+                    <div className="space-y-2">
+                      {currentQ.options.map((opt) => {
+                        const selected = answers[currentQ.id] === opt.id;
+                        return (
+                          <button
+                            key={opt.id}
+                            type="button"
+                           onClick={() => {
+  // save answer
+  setAnswers((prev) => ({
+    ...prev,
+    [currentQ.id]: opt.id,
+  }));
+
+  // store attempt data for AI analysis
+  setResults((prev) => {
+    const prevAttempt = prev[currentQ.id];
+    return {
+      ...prev,
+      [currentQ.id]: {
+        questionId: currentQ.id,
+        section: currentQ.section,
+        solved: opt.id === currentQ.correctOptionId,
+        attempts: (prevAttempt?.attempts || 0) + 1,
+        timeSpent: Math.floor(
+          (Date.now() - questionStartTime.current) / 1000
+        ),
+      },
+    };
+  });
+
+  // reset timer after selection
+  questionStartTime.current = Date.now();
+}}
+
+                            className={`w-full text-left px-3 py-2 rounded-lg border text-sm transition ${
+                              selected
+                                ? "border-primary bg-primary/10 text-foreground"
+                                : "border-border bg-secondary hover:bg-secondary/80 text-foreground"
+                            }`}
+                          >
+                            <span className="font-mono mr-2 uppercase">{opt.id}.</span>
+                            {opt.text}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+                      {answers[currentQ.id] ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          Option selected
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-accent" />
+                          Not answered yet
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {currentQ.type === "text" && (
+                  <>
+                    <textarea
+                      className="w-full h-48 p-4 rounded-lg bg-secondary border border-border text-foreground font-mono text-sm resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                      placeholder="Type your answer here..."
+                      value={answers[currentQ.id] || ""}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    />
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-4">
+                      {answers[currentQ.id]?.trim() ? (
+                        <>
+                          <CheckCircle className="w-4 h-4 text-green-400" />
+                          Answer saved
+                        </>
+                      ) : (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-accent" />
+                          Not answered yet
+                        </>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           <footer className="border-t border-border bg-card/80 backdrop-blur-xl p-4">
