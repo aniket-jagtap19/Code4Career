@@ -531,9 +531,11 @@ const Contest = () => {
   const currentQ = sectionQuestions[currentQuestion];
 
   // FIX: Now dependencies are correctly defined
-  useEffect(() => {
-    questionStartTime.current = Date.now();
-  }, [currentQ?.id]);
+// FIX: Now dependencies are correctly defined
+useEffect(() => {
+  questionStartTime.current = Date.now();
+  setRunResult(null); // Clear previous run result when question changes
+}, [currentQ?.id]);
 
   useEffect(() => {
     const timer = setInterval(() => {

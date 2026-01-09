@@ -7,7 +7,7 @@ import {
 import { useEffect, useState } from "react";
 import { auth, db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-
+import logo from "@/assests/logo.png" ;
 
 const Dashboard = () => {
   const user = auth.currentUser;
@@ -56,12 +56,18 @@ useEffect(() => {
       <header className="relative z-10 border-b border-border bg-card/50 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
-              <span className="text-xl font-bold text-foreground">Code4Career</span>
-            </Link>
+             <Link to="/dashboard" className="flex items-center gap-3">
+  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center overflow-hidden">
+    <img
+      src={logo}
+      alt="Code4Career Logo"
+      className="w-6 h-6 object-contain"
+    />
+  </div>
+  <span className="text-xl font-bold text-foreground">
+    Code4Career
+  </span>
+</Link>
             <div className="flex items-center gap-4">
               <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20">
                 <span className="text-sm text-primary font-medium">  {division || "div 2"} </span>

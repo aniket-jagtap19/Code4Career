@@ -5,7 +5,7 @@ import {
   Code, TrendingUp, Brain, Calculator, ArrowRight,
   CheckCircle, AlertCircle
 } from "lucide-react";
-
+import logo from "@/assests/logo.png" ;
 const ContestDetails = () => {
   const sections = [
     { 
@@ -60,12 +60,18 @@ const ContestDetails = () => {
       <header className="relative z-10 border-b border-border bg-card/50 backdrop-blur-xl">
         <div className="container mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
-            <Link to="/dashboard" className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center">
-                <Zap className="w-5 h-5 text-primary" />
-              </div>
-              <span className="text-xl font-bold text-foreground">SkillSprint</span>
-            </Link>
+              <Link to="/dashboard" className="flex items-center gap-3">
+  <div className="w-10 h-10 rounded-xl bg-primary/20 flex items-center justify-center overflow-hidden">
+    <img
+      src={logo}
+      alt="Code4Career Logo"
+      className="w-6 h-6 object-contain"
+    />
+  </div>
+  <span className="text-xl font-bold text-foreground">
+    Code4Career
+  </span>
+</Link>
             <Link to="/dashboard">
               <Button variant="ghost" size="sm">
                 <ArrowLeft className="w-4 h-4 mr-2" />
