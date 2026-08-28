@@ -89,3 +89,5 @@ export default {
   },
   plugins: [require("tailwindcss-animate")],
 } satisfies Config;
+
+// Project by Aniket Jagtap, time: - 2026-08-28 22:59:22
