@@ -16,3 +16,5 @@ export default defineConfig(({ mode }) => ({
     },
   },
 }));
+
+// Project by Aniket Jagtap, time: - 2026-09-03 22:21:31
