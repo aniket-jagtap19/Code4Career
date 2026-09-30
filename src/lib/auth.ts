@@ -11,3 +11,5 @@ export const signInWithGoogle = async () => {
 export const logout = async () => {
   await signOut(auth);
 };
+
+// Project by Aniket Jagtap, time: - 2026-10-01 03:40:07
